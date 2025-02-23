@@ -1,0 +1,89 @@
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=5000']  # Adjust limit for CV projects
+      - id: check-json
+        exclude: .vscode
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+      - id: check-toml
+      - id: check-yaml
+        args: ["--unsafe"]
+      - id: check-docstring-first
+      - id: debug-statements
+        language_version: python3
+
+  # Ruff for fast Python linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.2
+    hooks:
+      - id: ruff
+        types_or: [python, pyi, jupyter]
+        args: [
+          "--fix",
+          "--line-length=100",
+          # Ignore specific rules if needed
+          # "--ignore=E501,E203"
+        ]
+      - id: ruff-format
+        types_or: [python, pyi, jupyter]
+
+  # Add trailing commas
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+
+  # Markdown formatting
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.21
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm  # GitHub-Flavored Markdown
+          - mdformat-black  # Format code blocks using Black
+
+  # Clean notebook outputs
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        args: ["--extra-keys", "metadata.kernelspec cell.metadata.jupyter"]
+
+  # Check for large media files in notebooks
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.9.1
+    hooks:
+      - id: nbqa-check-ast  # Check for syntax errors
+      - id: nbqa-ruff  # Run Ruff on notebooks
+        args: ["--extend-ignore=E402"]  # Ignore import position in notebooks
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-PyYAML
+          - types-setuptools
+          - types-requests
+        args: [
+          "--ignore-missing-imports",
+          "--disallow-untyped-defs",
+          "--check-untyped-defs",
+          "--warn-redundant-casts",
+        ]
+        exclude: ^tests/
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        args: ["-ll", "-s", "B101"]  # Ignore assert warnings
