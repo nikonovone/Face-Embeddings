@@ -2,6 +2,7 @@ from pathlib import Path
 
 import dotenv
 from dotenv import load_dotenv
+import pyvips
 
 from src.training.pipeline import TrainingPipeline
 from src.utils import ExperimentConfig
