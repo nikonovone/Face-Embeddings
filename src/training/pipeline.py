@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List, Optional
 
 import lightning
@@ -10,15 +9,15 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     RichProgressBar,
 )
-from lightning.pytorch.utilities import rank_zero_info
 from torch import set_float32_matmul_precision
 
 from src.callbacks.debug import LogModelSummary, VisualizeBatch
 from src.callbacks.experiment_tracking import ClearMLTracking
 from src.callbacks.freeze import FeatureExtractorFreezeUnfreeze
-from src.data import DefaultDataModule
+from src.data.datamodule import DefaultDataModule
 from src.models import FaceEmbeddingsModel
 from src.utils import ExperimentConfig
+from src.utils.constants import CHECKPOINTS_PATH, LOGS_PATH
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,32 +45,24 @@ class TrainingPipeline:
         """Configure the training environment, including seeds and precision."""
         lightning.seed_everything(self.cfg.data_config.seed, workers=True)
         set_float32_matmul_precision("medium")
-        rank_zero_info(
-            f"Starting experiment: {self.cfg.name_model} | Seed: {self.cfg.data_config.seed}"
-        )
 
     def _initialize_logger(self) -> pl_loggers.TensorBoardLogger:
         """Initialize TensorBoard logger with experiment-specific log directory."""
-        log_dir = Path("logs") / self.cfg.name_model
-        log_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-        return pl_loggers.TensorBoardLogger(save_dir=str(log_dir), name="training")
+        return pl_loggers.TensorBoardLogger(save_dir=str(LOGS_PATH), name="training")
 
     def _initialize_callbacks(self) -> List[Callback]:
         """Initialize and return a list of training callbacks."""
-        checkpoint_dir = Path("checkpoints") / self.cfg.name_model
-        checkpoint_dir.mkdir(parents=True, exist_ok=True)
-
         callbacks: List[Callback] = [
             LogModelSummary(),
             RichProgressBar(),
             VisualizeBatch(every_n_epochs=5),
             LearningRateMonitor(logging_interval="step"),
             ModelCheckpoint(
-                dirpath=str(checkpoint_dir),
-                filename="{epoch}-{valid_retrieval_precision:.4f}",
+                dirpath=str(CHECKPOINTS_PATH),
+                filename="{epoch}-{valid_eer:.4f}",
                 save_top_k=3,
-                monitor="valid_retrieval_precision",
-                mode="max",
+                monitor="valid_eer",
+                mode="min",
                 every_n_epochs=1,
                 save_last=True,
                 save_weights_only=False,  # Ensure full model state is saved
@@ -87,7 +78,8 @@ class TrainingPipeline:
     def _initialize_model(self) -> FaceEmbeddingsModel:
         """Initialize the FaceEmbeddingsModel with configuration."""
         return FaceEmbeddingsModel(
-            name=self.cfg.name_model,
+            image_size=self.cfg.data_config.img_size[0],
+            embedding_size=self.cfg.model_params_config.embedding_size,
             optimizer_params=self.cfg.optimizer_config,
             scheduler_params=self.cfg.scheduler_config,
         )
@@ -103,7 +95,7 @@ class TrainingPipeline:
             {
                 "callbacks": self.callbacks,
                 "logger": self.logger,
-            }
+            },
         )
         return Trainer(**trainer_config)
 
@@ -121,8 +113,8 @@ class TrainingPipeline:
                 ckpt_path=resume_from_checkpoint,
             )
             best_model_path = self.trainer.checkpoint_callback.best_model_path
-            rank_zero_info(
-                f"Training completed. Best model saved at: {best_model_path}"
+            logger.info(
+                f"Training completed. Best model saved at: {best_model_path}",
             )
 
             if self.cfg.run_test:
@@ -145,7 +137,7 @@ class TrainingPipeline:
                 datamodule=self.datamodule,
                 ckpt_path=ckpt_path,
             )
-            rank_zero_info(f"Testing completed using checkpoint: {ckpt_path}")
+            logger.info(f"Testing completed using checkpoint: {ckpt_path}")
         except Exception as e:
             logger.error(f"Testing failed: {str(e)}", exc_info=True)
             raise
