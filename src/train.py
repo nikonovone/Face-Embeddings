@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import dotenv
-import pyvips
 from dotenv import load_dotenv
 
 from src.training.pipeline import TrainingPipeline
@@ -10,6 +9,8 @@ from src.utils.constants import CONFIG_PATH, PROJECT_ROOT
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+logger.ignore_warnings("ignore")
+
 
 if __name__ == "__main__":
     env_path = PROJECT_ROOT / ".env"
@@ -17,7 +18,7 @@ if __name__ == "__main__":
 
     # Get configuration path from environment
     cfg_path = Path(
-        dotenv.get_key(env_path, "TRAIN_CFG_PATH") or CONFIG_PATH / "train.yaml"
+        dotenv.get_key(env_path, "TRAIN_CFG_PATH") or CONFIG_PATH / "train.yaml",
     )
     # Load configuration and start training
     try:
@@ -27,11 +28,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Training failed: {str(e)}")
         raise
-
-
-class Terminal_Dimension:
-    def __init__(self):
-        self.m_limit = 25
-        self._m = 5
-        self._w = 5
-        self.w_maximum = 10
