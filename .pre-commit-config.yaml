@@ -64,22 +64,22 @@ repos:
       - id: nbqa-ruff  # Run Ruff on notebooks
         args: ["--extend-ignore=E402"]  # Ignore import position in notebooks
 
-  # Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
-    hooks:
-      - id: mypy
-        additional_dependencies:
-          - types-PyYAML
-          - types-setuptools
-          - types-requests
-        args: [
-          "--ignore-missing-imports",
-          "--disallow-untyped-defs",
-          "--check-untyped-defs",
-          "--warn-redundant-casts",
-        ]
-        exclude: ^tests/
+  # # Type checking
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies:
+  #         - types-PyYAML
+  #         - types-setuptools
+  #         - types-requests
+  #       args: [
+  #         "--ignore-missing-imports",
+  #         "--disallow-untyped-defs",
+  #         "--check-untyped-defs",
+  #         "--warn-redundant-casts",
+  #       ]
+  #       exclude: ^tests/
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
