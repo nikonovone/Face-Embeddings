@@ -1,0 +1,30 @@
+# Игнорировать данные и чекпоинты
+data/
+checkpoints/
+models/
+logs/
+
+# Игнорировать виртуальное окружение
+.venv/
+venv/
+
+# Игнорировать git
+.git/
+.gitignore
+
+# Игнорировать кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Игнорировать файлы IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Игнорировать временные файлы
+*.log
+*.tmp
