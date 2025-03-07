@@ -1,52 +1,61 @@
-# Makefile for Face Embeddings Project
+# Makefile для проекта Face Embeddings
 
-# Basic settings
-PYTHON := python3.12
-UV := uv
+# Базовые настройки
+PYTHON := python3
 PROJECT_NAME := Face Embeddings
+DOCKER_IMAGE_NAME := face-embeddings
+DOCKER_CONTAINER_NAME := face-embeddings-container
 
-# Paths
+# Пути
 SRC_DIR := src
-VENV_DIR := .venv
+DATA_DIR := data
+CHECKPOINTS_DIR := checkpoints
 
-# Environment variables
-export PYTHONPATH := $(PWD)
+# Переменные окружения
+export PYTHONPATH := /app
 
-.PHONY: setup train inference clean
+.PHONY: build run train inference clean docker-clean help
 
-# Setup virtual environment and install dependencies
-setup:
-	@echo "Creating virtual environment and installing dependencies..."
-	$(UV) venv $(VENV_DIR) --python=$(PYTHON)
-	. $(VENV_DIR)/bin/activate && \
-	$(UV) pip install -e .
-	@echo "Environment setup complete!"
-	@echo "Activate it with: source $(VENV_DIR)/bin/activate"
+# Сборка Docker-образа
+build:
+	docker build -t $(DOCKER_IMAGE_NAME) .
 
-# Training pipeline
+# Запуск Docker-контейнера с монтированием данных
+run:
+	docker run --shm-size=16G -it --user root --name $(DOCKER_CONTAINER_NAME) \
+		--gpus all \
+		-v $(PWD)/$(DATA_DIR):/app/data \
+		-v $(PWD)/$(CHECKPOINTS_DIR):/app/checkpoints \
+		$(DOCKER_IMAGE_NAME) bash
+
+# Запуск обучения внутри контейнера
 train:
-	@echo "Starting model training..."
-	. $(VENV_DIR)/bin/activate && \
-	$(PYTHON) -m $(SRC_DIR).train
+	uv run  $(PYTHON) -m $(SRC_DIR).train
 
-# Inference/evaluation pipeline
+# Запуск инференса внутри контейнера
 inference:
-	@echo "Running inference..."
-	. $(VENV_DIR)/bin/activate && \
-	$(PYTHON) -m $(SRC_DIR).inference
+	uv run  $(PYTHON) -m $(SRC_DIR).inference
 
-# Clean up
+# Очистка
 clean:
-	rm -rf $(VENV_DIR)
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} +
-	@echo "Cleaned up virtual environment and cache files"
+	@echo "Cleaned up cache files"
 
-# Show help
+# Очистка Docker ресурсов
+docker-clean:
+	docker stop $(DOCKER_CONTAINER_NAME) 2>/dev/null || true
+	docker rm $(DOCKER_CONTAINER_NAME) 2>/dev/null || true
+	docker rmi $(DOCKER_IMAGE_NAME) 2>/dev/null || true
+	@echo "Docker resources cleaned"
+
+# Показать справку
 help:
-	@echo "Available commands:"
-	@echo "  make setup      - Create virtual environment and install dependencies"
-	@echo "  make train      - Run model training"
-	@echo "  make inference  - Run model inference"
-	@echo "  make clean      - Remove virtual environment and cache files"
+	@echo "Доступные команды:"
+	@echo "  make build         - Собрать Docker-образ"
+	@echo "  make run           - Запустить Docker-контейнер"
+	@echo "  make train         - Запустить обучение модели"
+	@echo "  make inference     - Запустить инференс модели"
+	@echo "  make clean         - Удалить файлы кеша"
+	@echo "  make docker-clean  - Очистить Docker ресурсы"
