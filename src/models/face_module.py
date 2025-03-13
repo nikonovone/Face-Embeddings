@@ -1,12 +1,12 @@
 from typing import Dict, Optional
 
 import torch
+from ellzaf_ml.models import GhostFaceNetsV2
 from lightning import LightningModule
 from pytorch_metric_learning import losses
-from torch import Tensor, nn
+from torch import Tensor
 from torch.optim import SGD, Adam, AdamW
 from torchmetrics import MeanMetric
-from transformers import AutoImageProcessor, AutoModel
 
 from src.utils.config import OptimizerConfig, SchedulerConfig
 from src.utils.metrics import get_metrics
@@ -16,43 +16,32 @@ from src.utils.schedulers import get_cosine_schedule_with_warmup
 class FaceEmbeddingsModel(LightningModule):
     def __init__(
         self,
-        image_size: int = 224,  # DINOv2 default image size
+        image_size: int = 512,
+        width: float = 1.0,
+        dropout: float = 0.0,
         optimizer_params: Optional[OptimizerConfig] = None,
         scheduler_params: Optional[SchedulerConfig] = None,
         margin: float = 0.5,
-        embedding_size: int = 768,  # DINOv2 default embedding size
-        model_name: str = "facebook/dinov2-base",  # or small, large, giant
-        use_projection: bool = True,
+        embedding_size: int = 64,
+        model_name: str = None,
     ):
         """
         Args:
-            image_size: Input image size for DINOv2
+            image_size: Input image size (default: 112 for GhostFaceNetsV2)
+            width: Width multiplier for the model
+            dropout: Dropout rate
             optimizer_params: Optimizer configuration
             scheduler_params: Learning rate scheduler configuration
             margin: Margin for triplet loss
-            embedding_size: Size of the face embeddings
-            model_name: DINOv2 model variant to use
-            freeze_backbone: Whether to freeze the backbone model
-            use_projection: Whether to use a projection head
         """
         super().__init__()
 
-        # Initialize DINOv2 model
-        self.processor = AutoImageProcessor.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
-
-        # Get the actual embedding size from the model
-        self.backbone_embedding_size = self.model.config.hidden_size
-
-        # Add projection head if needed
-        self.use_projection = use_projection
-        if use_projection:
-            self.projection = nn.Sequential(
-                nn.Linear(self.backbone_embedding_size, self.backbone_embedding_size),
-                nn.ReLU(),
-                nn.Linear(self.backbone_embedding_size, embedding_size),
-                nn.LayerNorm(embedding_size),
-            )
+        # Initialize model
+        self.model = GhostFaceNetsV2(
+            image_size=image_size,
+            width=width,
+            dropout=dropout,
+        )
 
         # Loss function
         self.loss = losses.TripletMarginLoss(margin=margin, swap=True)
@@ -60,8 +49,6 @@ class FaceEmbeddingsModel(LightningModule):
         # Save parameters
         self.optimizer_params = optimizer_params
         self.scheduler_params = scheduler_params
-        self.embedding_size = embedding_size
-        self.image_size = image_size
 
         # Metrics
         self._train_loss = MeanMetric()
@@ -71,23 +58,11 @@ class FaceEmbeddingsModel(LightningModule):
         self._valid_metrics = metrics.clone(prefix="valid_")
         self._test_metrics = metrics.clone(prefix="test_")
 
-        self.example_input_array = torch.randn(1, 3, image_size, image_size)
-        self.save_hyperparameters(ignore=["backbone", "processor"])
+        self.save_hyperparameters(ignore=["model"])
 
     def forward(self, images: Tensor) -> Tensor:
         """Forward pass to get embeddings."""
-        # Get embeddings from DINOv2
-        outputs = self.model(images)
-        embeddings = outputs.last_hidden_state[:, 0]  # CLS token
-
-        # Apply projection if needed
-        if self.use_projection:
-            embeddings = self.projection(embeddings)
-
-        # Normalize embeddings
-        embeddings = nn.functional.normalize(embeddings, p=2, dim=1)
-
-        return embeddings
+        return self.model(images)
 
     def training_step(self, batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Training step with triplet loss."""
@@ -107,21 +82,11 @@ class FaceEmbeddingsModel(LightningModule):
         )
 
         # Create labels for triplet mining
-        batch_size = len(anchors)
         labels = torch.cat(
             [
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Anchor labels: 0,1,2,...
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Positive labels: 0,1,2,... (same as anchors)
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Negative labels: n,n+1,n+2,... (different)
+                torch.arange(len(anchors), device=self.device),
+                torch.arange(len(positives), device=self.device),
+                torch.arange(len(negatives), device=self.device),
             ],
         )
 
@@ -158,22 +123,11 @@ class FaceEmbeddingsModel(LightningModule):
             dim=0,
         )
 
-        # Create labels for triplet mining - should match the same pattern as in training_step
-        batch_size = len(anchors)
         labels = torch.cat(
             [
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Anchor labels: 0,1,2,...
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Positive labels: 0,1,2,... (same as anchors)
-                torch.arange(
-                    batch_size,
-                    device=self.device,
-                ),  # Negative labels: 0,1,2,... (same as anchors)
+                torch.arange(len(anchors), device=self.device),
+                torch.arange(len(positives), device=self.device),
+                torch.arange(len(negatives), device=self.device),
             ],
         )
 
