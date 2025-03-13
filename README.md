@@ -1,4 +1,4 @@
-# Train Embeddings MOdel with Pytorch Lightning
+# Train Embeddings Model with Pytorch Lightning
 
 Базовый шаблон для обучения эмбеддинг модели на примере face embeddings
 
