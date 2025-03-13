@@ -1,27 +1,27 @@
 project_name: Face Embeddinbgs
-experiment_name: baseline_arcfaceloss
+experiment_name: ghostfacenet
 track_in_clearml: false
 run_test: true
 
 trainer_config:
-  min_epochs: 4
-  max_epochs: 24
+  min_epochs: 2
+  max_epochs: 16
   check_val_every_n_epoch: 1
   log_every_n_steps: 50
   devices: 1
   accelerator: gpu
-  gradient_clip_val: 0.5
+  gradient_clip_val: 0.25
   gradient_clip_algorithm: norm
-  accumulate_grad_batches: 7
+  accumulate_grad_batches: 4
   deterministic: false
-  fast_dev_run: true
+  fast_dev_run: false
   default_root_dir: null
 
 model_params_config:
   name_model: 'GhostFaceNetsV2'
-  unfreeze_epoch: 0
+  unfreeze_epoch: 2
   pretrained: true
-  embedding_size: 64
+  embedding_size: 128
 
 optimizer_config:
   name: Adam
@@ -38,7 +38,7 @@ data_config:
   img_size:
   - 224
   - 224
-  batch_size: 48
+  batch_size: 16
   data_split:
   - 0.8
   - 0.1
