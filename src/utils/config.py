@@ -221,6 +221,10 @@ class ModelArchitecture(str, Enum):
     RESNET50 = "resnet50"
     EFFICIENTNET = "efficientnet"
     GHOSTFACENETV2 = "GhostFaceNetsV2"
+    DINOV2BASE = "facebook/dinov2-base"
+
+    def __str__(self):
+        return self.value
 
 
 class ModelConfig(BaseConfig):
