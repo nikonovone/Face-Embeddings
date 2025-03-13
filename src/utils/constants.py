@@ -7,7 +7,9 @@ load_dotenv()
 
 # Set project root directory
 _DEFAULT_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PROJECT_ROOT = Path(get_key(".env", "PROJ_ROOT") or _DEFAULT_PROJECT_ROOT)
+PROJECT_ROOT = Path(
+    get_key(_DEFAULT_PROJECT_ROOT / ".env", "PROJECT_ROOT") or _DEFAULT_PROJECT_ROOT,
+)
 
 # Create and export common project paths
 CONFIG_PATH = PROJECT_ROOT / "configs"
@@ -18,3 +20,6 @@ CHECKPOINTS_PATH = PROJECT_ROOT / "checkpoints"
 # Create basic directories
 for path in [CONFIG_PATH, DATA_PATH, LOGS_PATH, CHECKPOINTS_PATH]:
     path.mkdir(exist_ok=True, parents=True)
+
+IMAGE_MEAN = [0.485, 0.456, 0.406]
+IMAGE_STD = [0.229, 0.224, 0.225]

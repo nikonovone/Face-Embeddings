@@ -7,13 +7,14 @@ from lightning.pytorch.callbacks import (
     Callback,
     LearningRateMonitor,
     ModelCheckpoint,
+    # ModelPruning,
     RichProgressBar,
 )
 from torch import set_float32_matmul_precision
 
+from src.callbacks import FeatureExtractorFreezeUnfreeze
 from src.callbacks.debug import LogModelSummary, VisualizeBatch
 from src.callbacks.experiment_tracking import ClearMLTracking
-from src.callbacks.freeze import FeatureExtractorFreezeUnfreeze
 from src.data.datamodule import DefaultDataModule
 from src.models import FaceEmbeddingsModel
 from src.utils import ExperimentConfig
@@ -58,8 +59,8 @@ class TrainingPipeline:
             VisualizeBatch(every_n_epochs=5),
             LearningRateMonitor(logging_interval="step"),
             ModelCheckpoint(
-                dirpath=str(CHECKPOINTS_PATH),
-                filename="{epoch}-{valid_eer:.4f}",
+                dirpath=str(CHECKPOINTS_PATH / self.cfg.experiment_name),
+                filename=f"{self.cfg.experiment_name}" + "{epoch}-{valid_eer:.4f}",
                 save_top_k=3,
                 monitor="valid_eer",
                 mode="min",
@@ -67,7 +68,10 @@ class TrainingPipeline:
                 save_last=True,
                 save_weights_only=False,  # Ensure full model state is saved
             ),
-            FeatureExtractorFreezeUnfreeze(unfreeze_at_epoch=0),
+            FeatureExtractorFreezeUnfreeze(
+                unfreeze_at_epoch=self.cfg.model_params_config.unfreeze_epoch,
+            ),
+            # ModelPruning("l1_unstructured", amount=0.5),
         ]
 
         if self.cfg.track_in_clearml:
@@ -82,6 +86,7 @@ class TrainingPipeline:
             embedding_size=self.cfg.model_params_config.embedding_size,
             optimizer_params=self.cfg.optimizer_config,
             scheduler_params=self.cfg.scheduler_config,
+            model_name=self.cfg.model_params_config.name_model,
         )
 
     def _initialize_datamodule(self) -> DefaultDataModule:

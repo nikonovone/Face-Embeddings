@@ -11,6 +11,7 @@ SRC_DIR := src
 DATA_DIR := data
 CHECKPOINTS_DIR := checkpoints
 
+
 # Переменные окружения
 export PYTHONPATH := /app
 
@@ -22,7 +23,7 @@ build:
 
 # Запуск Docker-контейнера с монтированием данных
 run:
-	docker run --shm-size=16G -it --user root --name $(DOCKER_CONTAINER_NAME) \
+	docker run --shm-size=32G -it --user root --name $(DOCKER_CONTAINER_NAME) \
 		--gpus all \
 		-v $(PWD)/$(DATA_DIR):/app/data \
 		-v $(PWD)/$(CHECKPOINTS_DIR):/app/checkpoints \
@@ -31,6 +32,14 @@ run:
 # Запуск обучения внутри контейнера
 train:
 	uv run  $(PYTHON) -m $(SRC_DIR).train
+
+
+convert:
+	$(PYTHON) -m $(SRC_DIR).convert \
+		--checkpoint $(CHECKPOINTS_DIR)/$(MODEL_CHECKPOINT) \
+		--output $(CHECKPOINTS_DIR)/model.onnx \
+		--image-size 224 \
+		--test-inference
 
 # Запуск инференса внутри контейнера
 inference:

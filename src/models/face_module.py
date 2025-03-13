@@ -23,6 +23,7 @@ class FaceEmbeddingsModel(LightningModule):
         scheduler_params: Optional[SchedulerConfig] = None,
         margin: float = 0.5,
         embedding_size: int = 64,
+        model_name: str = None,
     ):
         """
         Args:
@@ -43,7 +44,7 @@ class FaceEmbeddingsModel(LightningModule):
         )
 
         # Loss function
-        self.loss = losses.TripletMarginLoss(amrgin=margin, swap=True)
+        self.loss = losses.TripletMarginLoss(margin=margin, swap=True)
 
         # Save parameters
         self.optimizer_params = optimizer_params
